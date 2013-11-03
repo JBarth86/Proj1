@@ -179,9 +179,33 @@ public class RunLengthEncoding extends DList {
    */
 
   public RunLengthEncoding(Ocean sea) {
-    // Your solution here, but you should probably leave the following line
-    //   at the end.
-    check();
+	  int current = 0;
+	  int totalLength = sea.height() * sea.width();
+	  int runLength;
+	  int hunger;
+	  int type;
+	  starveVal = sea.starveTime();
+	  width = sea.width();
+	  height = sea.height();
+	  
+	  while(current < totalLength) {
+		  type = sea.cellContents(current);
+		  hunger = sea.sharkFeeding(current);
+		  current++;
+		  runLength = 1;
+		  
+		  while((current < totalLength) && (type == sea.cellContents(current)) && (hunger == sea.sharkFeeding(current))) {
+			  current++;
+			  runLength++;
+		  }
+		  
+		  insertEnd(new Run(runLength, type, hunger));
+	  }
+	  
+	  // No really make sure you initialize this AFTER you initialize the list...
+	  // Seriously...
+	  runPointer = head;
+    //check();
   }
 
   /**

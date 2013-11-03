@@ -116,6 +116,8 @@ public class Ocean {
 
   public int cellContents(int x, int y) {return grid[x][y].getContents();}
 
+  public int cellContents(int i) {return cellContents(i % width, i / width);}
+  
   /**
    *  timeStep() performs a simulation timestep as described in README.
    *  @return an ocean representing the elapse of one timestep.
@@ -220,6 +222,8 @@ public class Ocean {
     // Replace the following line with your solution.
     return 0;
   }
+
+  public int sharkFeeding(int i) {return sharkFeeding(i % width, i / width);}
   
   abstract class OceanTile {
 	  int xCoord;
