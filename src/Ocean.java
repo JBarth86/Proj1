@@ -29,6 +29,10 @@ public class Ocean {
    *  Define any variables associated with an Ocean object here.  These
    *  variables MUST be private.
    */
+  private int width;
+  private int height;
+  private int starveTime;
+  private OceanTile[][] grid;
 
 
 
@@ -45,7 +49,16 @@ public class Ocean {
    */
 
   public Ocean(int i, int j, int starveTime) {
-    // Your solution here.
+	  width = i;
+	  height = j;
+	  this.starveTime = starveTime;
+	  grid = new OceanTile[width][height];
+	  
+	  for(int x = 0; x < width; x++) {
+		  for(int y = 0; y < height; y++) {
+			  grid[x][y] = new EmptyTile(x, y);
+		  }
+	  }
   }
 
   /**
@@ -53,30 +66,21 @@ public class Ocean {
    *  @return the width of the ocean.
    */
 
-  public int width() {
-    // Replace the following line with your solution.
-    return 1;
-  }
+  public int width() {return width;}
 
   /**
    *  height() returns the height of an Ocean object.
    *  @return the height of the ocean.
    */
 
-  public int height() {
-    // Replace the following line with your solution.
-    return 1;
-  }
+  public int height() {return height;}
 
   /**
    *  starveTime() returns the number of timesteps sharks survive without food.
    *  @return the number of timesteps sharks survive without food.
    */
 
-  public int starveTime() {
-    // Replace the following line with your solution.
-    return 1;
-  }
+  public int starveTime() {return starveTime;}
 
   /**
    *  addFish() places a fish in cell (x, y) if the cell is empty.  If the
@@ -86,7 +90,8 @@ public class Ocean {
    */
 
   public void addFish(int x, int y) {
-    // Your solution here.
+	  if(grid[x][y].getContents() == EMPTY)
+		  grid[x][y] = new FishTile(x, y);
   }
 
   /**
@@ -98,7 +103,8 @@ public class Ocean {
    */
 
   public void addShark(int x, int y) {
-    // Your solution here.
+	  if(grid[x][y].getContents() == EMPTY)
+		  grid[x][y] = new SharkTile(x, y, starveTime);
   }
 
   /**
@@ -108,10 +114,7 @@ public class Ocean {
    *  @param y is the y-coordinate of the cell whose contents are queried.
    */
 
-  public int cellContents(int x, int y) {
-    // Replace the following line with your solution.
-    return EMPTY;
-  }
+  public int cellContents(int x, int y) {return grid[x][y].getContents();}
 
   /**
    *  timeStep() performs a simulation timestep as described in README.
@@ -119,10 +122,61 @@ public class Ocean {
    */
 
   public Ocean timeStep() {
-    // Replace the following line with your solution.
-    return new Ocean(1, 1, 1);
+	  Ocean futureOcean = new Ocean(width, height, starveTime);
+	  int[] surroundings;
+	  for(int y = 0; y < height; y++) {
+		  for(int x = 0; x < width; x++) {
+			  surroundings = getSurroundings(validateX(x), validateY(y));
+		
+			  futureOcean.grid[x][y] = grid[x][y].step(surroundings[FISH], surroundings[SHARK]);
+		  }
+	  }
+	  
+	  return futureOcean;
+  }  
+  
+  private int[] getSurroundings(int xCoord, int yCoord) {
+	  int[] surroundings = new int[3];
+	  
+	  //System.out.println("origin = " + xCoord + ", " + yCoord);
+	  
+	  for(int y = yCoord - 1; y <= yCoord + 1; y++) {
+		  for(int x = xCoord - 1; x <= xCoord + 1; x++) {
+			  
+			  if(!((validateX(x) == xCoord) && (validateY(y) == yCoord))){
+				  //System.out.println("\tchecking: " + validateX(x) + ", " + validateY(y));
+				  if(cellContents(validateX(x), validateY(y)) == FISH) {
+					 // System.out.println("\t\tfish found");
+					  
+					  surroundings[FISH]++;
+				  }
+				  else if(cellContents(validateX(x), validateY(y)) == SHARK) {
+					 // System.out.println("\t\tshark found");
+					  surroundings[SHARK]++;
+				  }
+			  }
+		  }
+	  }
+	  
+	  return surroundings;
   }
-
+  
+  private int validateX(int x) {
+	  if(x < 0)
+		  return width - 1;
+	  if(x >= width)
+		  return 0;
+	  return x;
+  }
+  
+  private int validateY(int y) {
+	  if(y < 0)
+		  return height - 1;
+	  if(y >= height)
+		  return 0;
+	  return y;
+  }
+  
   /**
    *  The following method is required for Part II.
    */
@@ -164,6 +218,94 @@ public class Ocean {
   public int sharkFeeding(int x, int y) {
     // Replace the following line with your solution.
     return 0;
+  }
+  
+  abstract class OceanTile {
+	  int xCoord;
+	  int yCoord;
+	  int contains;
+	  
+	  public int getContents() {return contains;}
+	  
+	  
+	  
+	  public abstract OceanTile step(int fish, int sharks);
+  }
+  
+  final class SharkTile extends OceanTile {
+	  int hunger;
+	  
+	  
+	  public SharkTile(int x, int y, int hunger) {
+		  xCoord = x;
+		  yCoord = y;
+		  contains = Ocean.SHARK;
+		  this.hunger = hunger;
+	  }
+	  
+	  public OceanTile step(int fish, int sharks) {
+		  if(fish > 0)
+			  hunger = starveTime() + 1;
+		  if(hunger - 1 < 0)
+			  return new EmptyTile(xCoord, yCoord);
+		  return new SharkTile(xCoord, yCoord, hunger - 1);
+	  }
+	  
+	  public int getHunger() {return hunger;}
+  }
+  
+  final class EmptyTile extends OceanTile {
+	  public EmptyTile(int x, int y) {
+		  xCoord = x;
+		  yCoord = y;
+		  contains = Ocean.EMPTY;
+	  }
+
+	  public OceanTile step(int fish, int sharks) {
+		  if(fish < 2)
+			  return new EmptyTile(xCoord, yCoord);
+		  else if(sharks < 2)
+			  return new FishTile(xCoord, yCoord);
+		  return new SharkTile(xCoord, yCoord, starveTime());
+	  }
+  }
+  
+  final class FishTile extends OceanTile {
+	  public FishTile(int x, int y) {
+		  xCoord = x;
+		  yCoord = y;
+		  contains = Ocean.FISH;
+	  }
+	  
+	  public OceanTile step(int fish, int sharks) {
+		  if(sharks == 1)
+			  return new EmptyTile(xCoord, yCoord);
+		  else if(sharks > 1)
+			  return new SharkTile(xCoord, yCoord, starveTime());
+		  return new FishTile(xCoord, yCoord);
+	  }
+  }
+  
+  public void printGrid() {
+	  for(int y = 0; y < height; y++) {
+		  for(int x = 0; x < width; x++) {
+			  if(cellContents(x, y) == EMPTY)
+				  System.out.print("0");
+			  else if(cellContents(x, y) == FISH)
+				  System.out.print("f");
+		  }
+		  System.out.println();
+	  }
+  }
+  
+  
+  public static void main(String[] args) {
+	  Ocean o = new Ocean(50, 37, 3);
+	  
+	  o.printGrid();
+	  o.addFish(1, 1);
+	  System.out.println();
+	  o.printGrid();
   }
 
 }
