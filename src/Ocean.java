@@ -195,8 +195,9 @@ public class Ocean {
    *         before the shark will starve.  It's up to you, but be consistent.
    */
 
-  public void addShark(int x, int y, int feeding) {
-    // Your solution here.
+  public void addShark(int x, int y, int feeding) {	  
+	  if(grid[x][y].getContents() == EMPTY)
+		  grid[x][y] = new SharkTile(x, y, feeding);
   }
 
   /**

@@ -21,12 +21,16 @@
  *  See the README file accompanying this project for additional details.
  */
 
-public class RunLengthEncoding {
+public class RunLengthEncoding extends DList {
 
   /**
    *  Define any variables associated with a RunLengthEncoding object here.
    *  These variables MUST be private.
    */
+	private DListNode runPointer; // Used for the nextRun() and resetRuns() methods
+	private int starveVal; // the starveTime for the Ocean object
+	private int width; // width of the Ocean object
+	private int height; // height of the Ocean object
 
 
 
@@ -44,7 +48,16 @@ public class RunLengthEncoding {
    */
 
   public RunLengthEncoding(int i, int j, int starveTime) {
-    // Your solution here.
+	  starveVal = starveTime;
+	  width = i;
+	  height = j;
+	  Run emptyOcean = new Run(i * j, Ocean.EMPTY, starveVal);
+	  insertEnd(emptyOcean);
+	  
+	  //make sure to initialize runPointer AFTER initializing the first node.
+	  //and after any future calls to insertFront() although I don't imagine
+	  //I will need insertFront in this class 
+	  runPointer = head;
   }
 
   /**
@@ -64,9 +77,17 @@ public class RunLengthEncoding {
    *         The sum of all elements of the runLengths array should be i * j.
    */
 
-  public RunLengthEncoding(int i, int j, int starveTime,
-                           int[] runTypes, int[] runLengths) {
-    // Your solution here.
+  public RunLengthEncoding(int i, int j, int starveTime, int[] runTypes, int[] runLengths) {
+	  starveVal = starveTime;
+	  width = i;
+	  height = j;
+	  Run newRun;
+	  for(int x = 0; x < runLengths.length; x++) {
+		  newRun = new Run(runLengths[x], runTypes[x], ((runTypes[x] == Ocean.SHARK)? starveVal: -1));
+		  insertEnd(newRun);
+	  }
+	  // AFTER the list is initialized
+	  runPointer = head;
   }
 
   /**
@@ -92,9 +113,7 @@ public class RunLengthEncoding {
    *  nextRun() will enumerate all the runs from the beginning.
    */
 
-  public void restartRuns() {
-    // Your solution here.
-  }
+  public void restartRuns() {runPointer = head;}
 
   /**
    *  nextRun() returns the next run in the enumeration, as described above.
@@ -106,8 +125,12 @@ public class RunLengthEncoding {
    */
 
   public TypeAndSize nextRun() {
-    // Replace the following line with your solution.
-    return new TypeAndSize(Ocean.EMPTY, 1);
+	  if(runPointer == null)
+		  return null;
+	  TypeAndSize ts = new TypeAndSize(((Run)runPointer.item).getRunType(), ((Run)runPointer.item).getRunLength());
+	  runPointer = runPointer.next;
+	  
+	  return ts;
   }
 
   /**
@@ -118,8 +141,30 @@ public class RunLengthEncoding {
    */
 
   public Ocean toOcean() {
-    // Replace the following line with your solution.
-    return new Ocean(1, 1, 1);
+	  // Creates an Ocean object with width, height, and starveTime equal this RunLengthEncoding
+	  // object's respective values. The method then iterates through each node of the list in
+	  // order to set the Oceans tiles to the appropriate values according to each run.
+	  
+	  Ocean returnOcean = new Ocean(width, height, starveVal);
+	  DListNode currentNode = head;
+	  Run currentRun;
+	  int i = 0;
+	  
+	  while(currentNode != null) {
+		  currentRun = (Run)currentNode.item;
+		  
+		  for(int x = 0; x < currentRun.getRunLength(); x++) {
+			  if(currentRun.getRunType() == Ocean.SHARK)
+				  returnOcean.addShark(i % width, i / width, currentRun.getHungerVal());
+			  else if(currentRun.getRunType() == Ocean.FISH)
+				  returnOcean.addFish(i % width, i / width);
+			  
+			  i++;
+		  }
+		  currentNode = currentNode.next;
+	  }
+	  
+    return returnOcean;
   }
 
   /**
@@ -184,4 +229,25 @@ public class RunLengthEncoding {
   public void check() {
   }
 
+  class Run {
+	  private int runLength;
+	  private int runType;
+	  private int hungerVal;
+	  
+	  Run(int length, int type, int hunger) {
+		  runLength = length;
+		  runType = type;
+		  hungerVal = hunger;
+	  }
+	  
+	  Run(int length, int type) {this(length, type, -1);}
+	  
+	  Run(int length) {this(length, Ocean.EMPTY);}
+	  
+	  int getRunLength(){return runLength;}
+	  
+	  int getRunType(){return runType;}
+	  
+	  int getHungerVal(){return hungerVal;}
+  }
 }
