@@ -274,4 +274,45 @@ public class RunLengthEncoding extends DList {
 	  
 	  int getHungerVal(){return hungerVal;}
   }
+  
+public static void main(String[] args) {
+	  
+	  Ocean o = new Ocean(20, 20, 3);
+
+	  o.addShark(2, 1);
+	  o.addShark(1, 2);
+	  o.addShark(2, 2);
+	  o.addShark(3, 2);
+	  o.addShark(2, 3);
+	  o.addFish(1, 1);
+	  o.addFish(3, 1);
+	  o.addFish(4, 1);
+	  o.addFish(0, 3);
+	  o.addFish(1, 3);
+	  
+	  o.printGrid();
+	  
+	  RunLengthEncoding rlc = new RunLengthEncoding(o);
+
+	  System.out.println();
+	  System.out.println(rlc.nextRun());
+	  System.out.println();
+	  System.out.println(rlc.nextRun());
+	  System.out.println();
+	  
+	  Ocean sea = rlc.toOcean();
+	  
+	  sea.printGrid();
+	  sea = sea.timeStep();
+	  System.out.println();
+	  sea.printGrid();
+	  sea = sea.timeStep();
+	  System.out.println();
+	  sea.printGrid();
+	  sea = sea.timeStep();
+	  System.out.println();
+	  sea.printGrid();
+	  sea = sea.timeStep();
+	  System.out.println();
+  }
 }

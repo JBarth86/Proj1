@@ -219,8 +219,10 @@ public class Ocean {
    */
 
   public int sharkFeeding(int x, int y) {
-    // Replace the following line with your solution.
-    return 0;
+	  if(grid[x][y] instanceof SharkTile)
+		  return ((SharkTile)grid[x][y]).getHunger();
+	  
+	  return -1;
   }
 
   public int sharkFeeding(int i) {return sharkFeeding(i % width, i / width);}
@@ -292,15 +294,23 @@ public class Ocean {
   }
   
   public void printGrid() {
+	  for(int i = 0; i < width + 2; i++)
+		  System.out.print("_");
+	  System.out.println();
 	  for(int y = 0; y < height; y++) {
+		  System.out.print("|");
 		  for(int x = 0; x < width; x++) {
-			  if(cellContents(x, y) == EMPTY)
-				  System.out.print("0");
-			  else if(cellContents(x, y) == FISH)
-				  System.out.print("f");
+			  if(grid[x][y] instanceof EmptyTile) 
+				  System.out.print(" ");
+			  else if(grid[x][y] instanceof FishTile)
+				  System.out.print("~");
+			  else
+				  System.out.print("S"); //System.out.print(sharkFeeding(x, y));
 		  }
-		  System.out.println();
+		  System.out.println("|");
 	  }
+	  for(int i = 0; i < width + 2; i++)
+		  System.out.print("_");
   }
   
   
