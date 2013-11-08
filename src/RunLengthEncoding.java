@@ -21,18 +21,20 @@
  *  See the README file accompanying this project for additional details.
  */
 
-public class RunLengthEncoding extends DList {
+public class RunLengthEncoding {
 
   /**
-   *  Define any variables associated with a RunLengthEncoding object here.
-   *  These variables MUST be private.
+   *  I've implemented this class to manage a doubly linked list of Run objects
+   *  implemented as nodes. The coding seemed much cleaner this way than accessing
+   *  the runs through a linked list of nodes pointing to run objects.
    */
-	private DListNode runPointer; // Used for the nextRun() and resetRuns() methods
+	private Run runPointer; // Used for the nextRun() and resetRuns() methods
 	private int starveVal; // the starveTime for the Ocean object
 	private int width; // width of the Ocean object
 	private int height; // height of the Ocean object
 
-
+	private Run header; // header and trailer are dummy Run nodes with their data members set to -1
+	private Run trailer; // RunLengthEncoding constructors should initialize header and trailer with the two argument Run constructor.
 
   /**
    *  The following methods are required for Part II.
@@ -51,13 +53,11 @@ public class RunLengthEncoding extends DList {
 	  starveVal = starveTime;
 	  width = i;
 	  height = j;
+	  header = new Run(null, trailer);
+	  trailer = new Run(header, null);
 	  Run emptyOcean = new Run(i * j, Ocean.EMPTY, starveVal);
-	  insertEnd(emptyOcean);
-	  
-	  //make sure to initialize runPointer AFTER initializing the first node.
-	  //and after any future calls to insertFront() although I don't imagine
-	  //I will need insertFront in this class 
-	  runPointer = head;
+	  insertLast(emptyOcean);
+	  runPointer = getFirst();
   }
 
   /**
@@ -81,13 +81,16 @@ public class RunLengthEncoding extends DList {
 	  starveVal = starveTime;
 	  width = i;
 	  height = j;
+	  header = new Run(null, trailer);
+	  trailer = new Run(header, null);
 	  Run newRun;
+	  
 	  for(int x = 0; x < runLengths.length; x++) {
 		  newRun = new Run(runLengths[x], runTypes[x], ((runTypes[x] == Ocean.SHARK)? starveVal: -1));
-		  insertEnd(newRun);
+		  insertLast(newRun);
 	  }
-	  // AFTER the list is initialized
-	  runPointer = head;
+	  
+	  runPointer = getFirst();
   }
 
   /**
@@ -113,7 +116,7 @@ public class RunLengthEncoding extends DList {
    *  nextRun() will enumerate all the runs from the beginning.
    */
 
-  public void restartRuns() {runPointer = head;}
+  public void restartRuns() {runPointer = getFirst();}
 
   /**
    *  nextRun() returns the next run in the enumeration, as described above.
@@ -125,10 +128,11 @@ public class RunLengthEncoding extends DList {
    */
 
   public TypeAndSize nextRun() {
-	  if(runPointer == null)
+	  if(!(hasNext(runPointer)))
 		  return null;
-	  TypeAndSize ts = new TypeAndSize(((Run)runPointer.item).getRunType(), ((Run)runPointer.item).getRunLength());
-	  runPointer = runPointer.next;
+	  
+	  TypeAndSize ts = new TypeAndSize(runPointer.getRunType(), runPointer.getRunLength());
+	  runPointer = runPointer.getNext();
 	  
 	  return ts;
   }
@@ -146,12 +150,10 @@ public class RunLengthEncoding extends DList {
 	  // order to set the Oceans tiles to the appropriate values according to each run.
 	  
 	  Ocean returnOcean = new Ocean(width, height, starveVal);
-	  DListNode currentNode = head;
-	  Run currentRun;
+	  Run currentRun = getFirst();
 	  int i = 0;
 	  
-	  while(currentNode != null) {
-		  currentRun = (Run)currentNode.item;
+	  while(hasNext(currentRun)) {
 		  
 		  for(int x = 0; x < currentRun.getRunLength(); x++) {
 			  if(currentRun.getRunType() == Ocean.SHARK)
@@ -161,7 +163,7 @@ public class RunLengthEncoding extends DList {
 			  
 			  i++;
 		  }
-		  currentNode = currentNode.next;
+		  currentRun = currentRun.getNext();
 	  }
 	  
     return returnOcean;
@@ -187,6 +189,8 @@ public class RunLengthEncoding extends DList {
 	  starveVal = sea.starveTime();
 	  width = sea.width();
 	  height = sea.height();
+	  header = new Run(null, trailer);
+	  trailer = new Run(header, null);
 	  
 	  while(current < totalLength) {
 		  type = sea.cellContents(current);
@@ -199,13 +203,12 @@ public class RunLengthEncoding extends DList {
 			  runLength++;
 		  }
 		  
-		  insertEnd(new Run(runLength, type, hunger));
+		  insertLast(new Run(runLength, type, hunger));
 	  }
 	  
-	  // No really make sure you initialize this AFTER you initialize the list...
-	  // Seriously...
-	  runPointer = head;
-    //check();
+	  runPointer = getFirst();
+	  
+    check();
   }
 
   /**
@@ -222,8 +225,18 @@ public class RunLengthEncoding extends DList {
    */
 
   public void addFish(int x, int y) {
-    // Your solution here, but you should probably leave the following line
-    //   at the end.
+	  Run insertionRun = prepInsertionRun(x, y);
+	  
+	  if(insertionRun == null)
+		  return;
+				  
+	  Run start = insertionRun.getPrev().getPrev();
+	  Run end = insertionRun.getNext().getNext();
+	  insertionRun.setRunType(Ocean.FISH);
+	  insertionRun.setHungerVal(-1);
+	  
+	  smoothOver(start, end);
+	  
     check();
   }
 
@@ -239,10 +252,72 @@ public class RunLengthEncoding extends DList {
    */
 
   public void addShark(int x, int y) {
-    // Your solution here, but you should probably leave the following line
-    //   at the end.
-    check();
+	  Run insertionRun = prepInsertionRun(x, y);
+	  
+	  if(insertionRun == null)
+		  return;
+				  
+	  Run start = insertionRun.getPrev().getPrev();
+	  Run end = insertionRun.getNext().getNext();
+	  insertionRun.setRunType(Ocean.SHARK);
+	  insertionRun.setHungerVal(starveVal);
+	  
+	  smoothOver(start, end);
+  
+  check();
   }
+  
+  private Run prepInsertionRun(int x, int y) {
+	  Run currentRun = getFirst();
+	  int insertionPoint = wrap(x, y);
+	  int position = 0;
+	  int totalLength = width * height;
+	  
+	  while(position < totalLength) {
+		  if(insertionPoint > currentRun.getRunLength() + position - 1) {
+			  position += currentRun.getRunLength();
+			  currentRun = currentRun.getNext();
+			  continue;
+		  }
+		  
+		  break;
+	  }
+	  
+	  if((position >= totalLength) || (currentRun.getRunType() != Ocean.EMPTY))
+		  return null; // Either this is a run of type EMPTY or insertionPoint is out of bounds
+	  
+	  Run start = currentRun.getPrev();
+	  int currentLength = currentRun.getRunLength();
+	  int currentType = Ocean.EMPTY;
+	  int currentHunger = -1;
+	  
+	  insertAfter(start, new Run(insertionPoint - position, currentType, currentHunger));
+	  insertAfter(currentRun, new Run(currentLength - currentRun.getPrev().getRunLength() - 1, currentType,  currentHunger));
+	  currentRun.setRunLength(1);
+	  
+	  return currentRun;
+  }
+  
+  private void smoothOver(Run start, Run end) {
+	  Run currentRun = start;
+	  
+	  while(currentRun != end.getNext()) {
+		  if(currentRun.next.getRunLength() == 0)
+			  remove(currentRun.getNext());
+		  
+		  else if((currentRun.getRunType() == currentRun.getNext().getRunType())
+				  && (currentRun.getHungerVal() == currentRun.getNext().getHungerVal())) {
+			  
+			  currentRun.setRunLength(currentRun.getRunLength() + currentRun.getNext().getRunLength());
+			  remove(currentRun.getNext());
+		  }
+		  
+		  else
+			  currentRun = currentRun.getNext();
+	  }
+  }
+  
+  int wrap(int x, int y) {return (x % width) + (y * width);}
 
   /**
    *  check() walks through the run-length encoding and prints an error message
@@ -250,13 +325,115 @@ public class RunLengthEncoding extends DList {
    *  lengths does not equal the number of cells in the ocean.
    */
 
-  public void check() {
+  public void check() throws IllegalStateException {
+	  Run currentRun = getFirst();
+	  int curLength = 0;
+	  int totalLength = width * height;
+	  
+	  while(hasNext(currentRun)) {
+		  if((currentRun.getRunType() == currentRun.getNext().getRunType())
+			&&(currentRun.getHungerVal() == currentRun.getNext().getHungerVal())) {
+			  
+			  currentRun = currentRun.getNext();
+			  break;
+		  }
+		  
+		  curLength += currentRun.getRunLength();
+		  currentRun = currentRun.getNext();
+	  }
+	  
+	  if(curLength != totalLength)
+		   throw new IllegalStateException("Sum of Run lengths not equal to RunLengthEncoding length ");
+	  
+	  else if(currentRun.getRunType() == currentRun.getPrev().getRunType()
+			 && currentRun.getHungerVal() == currentRun.getPrev().getHungerVal())
+		  throw new IllegalStateException("RunLengthEncoding contains consecutive runs of same runType and hungerVal");
+	  
+  }
+  
+  public Run getFirst() throws NullPointerException {
+	  Run returnNode = header.getNext();
+	  
+	  if(returnNode == trailer)
+		  throw new NullPointerException("trailer should not be returned from getFirst()");
+	  
+	  return returnNode;
+  }
+  
+  public Run getLast() {
+	  Run returnNode = trailer.getPrev();
+
+	  if(returnNode == header)
+		  throw new NullPointerException("header should not be returned from getFirst()");
+	  
+	  return returnNode;
+  }
+  
+  public boolean hasNext(Run r) {return r != trailer;}
+  
+  public boolean hasPrev(Run r) {return r != header;}
+
+  public void insertFirst(Run newRun) {insertAfter(header, newRun);}
+
+  public void insertLast(Run newRun) {insertBefore(trailer, newRun);}
+  
+  public void insertBefore(Run after, Run newRun) throws IllegalArgumentException {
+	  if(after == header)
+		  throw new IllegalArgumentException("Can not insert before header");
+	  
+	  Run before = after.getPrev();
+	  before.setNext(newRun);
+	  after.setPrev(newRun);
+	  newRun.setNext(after);
+	  newRun.setPrev(before);
+  }
+
+  public void insertAfter(Run before, Run newRun) throws IllegalArgumentException {
+	  if(before == trailer)
+		  throw new IllegalArgumentException("Can not insert after trailer");
+	  
+	  Run after = before.getNext();
+	  after.setPrev(newRun);
+	  before.setNext(newRun);
+	  newRun.setPrev(before);
+	  newRun.setNext(after);
+  }
+  
+  public void remove(Run toRemove) {
+	  Run before = toRemove.getPrev();
+	  Run after = toRemove.getNext();
+	  
+	  before.setNext(after);
+	  after.setPrev(before);
+  }
+  
+  public String toString() {
+	  String s = "";
+	  Run currentRun = getFirst();
+	  
+	  while(hasNext(currentRun)) {
+		  s += currentRun + "\n";
+		  currentRun = currentRun.getNext();
+	  }
+	  
+	  return s + "\n";
   }
 
   class Run {
 	  private int runLength;
 	  private int runType;
 	  private int hungerVal;
+	  private Run prev;
+	  private Run next;
+	  
+	  // This constructor is used to initialize the header and trailer nodes.
+	  Run(Run p, Run n) {
+		  prev = p;
+		  next = n;
+		  runLength = -1;
+		  runType = -1;
+		  hungerVal = -1;
+	  }
 	  
 	  Run(int length, int type, int hunger) {
 		  runLength = length;
@@ -268,51 +445,46 @@ public class RunLengthEncoding extends DList {
 	  
 	  Run(int length) {this(length, Ocean.EMPTY);}
 	  
-	  int getRunLength(){return runLength;}
+	  public int getRunLength(){return runLength;}
 	  
-	  int getRunType(){return runType;}
+	  public int getRunType(){return runType;}
 	  
-	  int getHungerVal(){return hungerVal;}
-  }
-  
-public static void main(String[] args) {
+	  public int getHungerVal(){return hungerVal;}
 	  
-	  Ocean o = new Ocean(20, 20, 3);
+	  public Run getPrev() {return prev;}
+	  
+	  public Run getNext() {return next;}
+	  
+	  void setPrev(Run p) {prev = p;}
+	  
+	  void setNext(Run n) {next = n;}
 
-	  o.addShark(2, 1);
-	  o.addShark(1, 2);
-	  o.addShark(2, 2);
-	  o.addShark(3, 2);
-	  o.addShark(2, 3);
-	  o.addFish(1, 1);
-	  o.addFish(3, 1);
-	  o.addFish(4, 1);
-	  o.addFish(0, 3);
-	  o.addFish(1, 3);
+	  void setRunType(int type) {runType = type;}
 	  
-	  o.printGrid();
+	  void setRunLength(int length) {runLength = length;}
 	  
-	  RunLengthEncoding rlc = new RunLengthEncoding(o);
-
-	  System.out.println();
-	  System.out.println(rlc.nextRun());
-	  System.out.println();
-	  System.out.println(rlc.nextRun());
-	  System.out.println();
+	  void setHungerVal(int hunger) {hungerVal = hunger;}
 	  
-	  Ocean sea = rlc.toOcean();
-	  
-	  sea.printGrid();
-	  sea = sea.timeStep();
-	  System.out.println();
-	  sea.printGrid();
-	  sea = sea.timeStep();
-	  System.out.println();
-	  sea.printGrid();
-	  sea = sea.timeStep();
-	  System.out.println();
-	  sea.printGrid();
-	  sea = sea.timeStep();
-	  System.out.println();
+	  public String toString() {
+		  String type;
+		  
+		  switch(runType) {
+		  
+		  case Ocean.EMPTY:
+			  type = "Empty";
+			  break;
+		  case Ocean.FISH:
+			  type = "Fish";
+			  break;
+		  case Ocean.SHARK:
+			  type = "Shark";
+			  break;
+		  default:
+			  type = "Invalid Type";
+		  }
+		  
+		  return "[" + type + ", " + runLength + ", " + hungerVal + "]";
+		  
+	  }
   }
 }
